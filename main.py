@@ -66,225 +66,10 @@ st.markdown(
             </style>
             ''',unsafe_allow_html=True)
 
-st.header("Annotated CV")
-with st.container(border=True):
-    annotated_text(
-    "This ",
-    ("is", "verb"),
-    " some ",
-    ("annotated", "adj"),
-    ("text", "noun"),
-    " for those of ",
-    ("you", "pronoun"),
-    " who ",
-    ("like", "verb"),
-    " this sort of ",
-    ("thing", "noun"),
-    ".",
-    "This ",
-    ("is", "verb"),
-    " some ",
-    ("annotated", "adj"),
-    ("text", "noun"),
-    " for those of ",
-    ("you", "pronoun"),
-    " who ",
-    ("like", "verb"),
-    " this sort of ",
-    ("thing", "noun"),
-    ".",
-    "This ",
-    ("is", "verb"),
-    " some ",
-    ("annotated", "adj"),
-    ("text", "noun"),
-    " for those of ",
-    ("you", "pronoun"),
-    " who ",
-    ("like", "verb"),
-    " this sort of ",
-    ("thing", "noun"),
-    ".",
-    "This ",
-    ("is", "verb"),
-    " some ",
-    ("annotated", "adj"),
-    ("text", "noun"),
-    " for those of ",
-    ("you", "pronoun"),
-    " who ",
-    ("like", "verb"),
-    " this sort of ",
-    ("thing", "noun"),
-    ".",
-    "This ",
-    ("is", "verb"),
-    " some ",
-    ("annotated", "adj"),
-    ("text", "noun"),
-    " for those of ",
-    ("you", "pronoun"),
-    " who ",
-    ("like", "verb"),
-    " this sort of ",
-    ("thing", "noun"),
-    ".",
-    "This ",
-    ("is", "verb"),
-    " some ",
-    ("annotated", "adj"),
-    ("text", "noun"),
-    " for those of ",
-    ("you", "pronoun"),
-    " who ",
-    ("like", "verb"),
-    " this sort of ",
-    ("thing", "noun"),
-    ".",
-    "This ",
-    ("is", "verb"),
-    " some ",
-    ("annotated", "adj"),
-    ("text", "noun"),
-    " for those of ",
-    ("you", "pronoun"),
-    " who ",
-    ("like", "verb"),
-    " this sort of ",
-    ("thing", "noun"),
-    ".",
-    "This ",
-    ("is", "verb"),
-    " some ",
-    ("annotated", "adj"),
-    ("text", "noun"),
-    " for those of ",
-    ("you", "pronoun"),
-    " who ",
-    ("like", "verb"),
-    " this sort of ",
-    ("thing", "noun"),
-    ".",
-    "This ",
-    ("is", "verb"),
-    " some ",
-    ("annotated", "adj"),
-    ("text", "noun"),
-    " for those of ",
-    ("you", "pronoun"),
-    " who ",
-    ("like", "verb"),
-    " this sort of ",
-    ("thing", "noun"),
-    ".",
-    "This ",
-    ("is", "verb"),
-    " some ",
-    ("annotated", "adj"),
-    ("text", "noun"),
-    " for those of ",
-    ("you", "pronoun"),
-    " who ",
-    ("like", "verb"),
-    " this sort of ",
-    ("thing", "noun"),
-    ".",
-    "This ",
-    ("is", "verb"),
-    " some ",
-    ("annotated", "adj"),
-    ("text", "noun"),
-    " for those of ",
-    ("you", "pronoun"),
-    " who ",
-    ("like", "verb"),
-    " this sort of ",
-    ("thing", "noun"),
-    ".",
-    "This ",
-    ("is", "verb"),
-    " some ",
-    ("annotated", "adj"),
-    ("text", "noun"),
-    " for those of ",
-    ("you", "pronoun"),
-    " who ",
-    ("like", "verb"),
-    " this sort of ",
-    ("thing", "noun"),
-    ".",
-    "This ",
-    ("is", "verb"),
-    " some ",
-    ("annotated", "adj"),
-    ("text", "noun"),
-    " for those of ",
-    ("you", "pronoun"),
-    " who ",
-    ("like", "verb"),
-    " this sort of ",
-    ("thing", "noun"),
-    ".",
-    "This ",
-    ("is", "verb"),
-    " some ",
-    ("annotated", "adj"),
-    ("text", "noun"),
-    " for those of ",
-    ("you", "pronoun"),
-    " who ",
-    ("like", "verb"),
-    " this sort of ",
-    ("thing", "noun"),
-    ".",
-    )
-
 PLOT_HEIGHT = 400
 PLOT_WIDTH = 400
 
-col1, col2 = st.columns(2)
-
-with col1:
-    st.header("Classification")
-    chart_data = pd.DataFrame(np.random.rand(3, 3), columns=["Director", "Gerente", "Especialista"])
-    random_numbers = np.random.rand(3)
-    normalized_random_numbers = random_numbers / np.sum(random_numbers)
-    chart_data['Normalized'] = normalized_random_numbers
-    fig = px.pie(values=normalized_random_numbers, names=["Director", "Gerente", "Especialista"], height=PLOT_HEIGHT, width=PLOT_WIDTH)
-    st.plotly_chart(fig)
-
-with col2:
-    st.header("Top Semantic Meaning")
-    chart_data = pd.DataFrame(np.random.rand(7, 3), columns=["Director", "Gerente", "Especialista"])
-    st.bar_chart(chart_data)
-
-st.header("Semantic Comparison")
-
-col3, col4 = st.columns(2)
-
-with col3:
-    st.header("Cloud of words")
-    text = 'Fun, fun, awesome, awesome, tubular, astounding, superb, great, amazing, amazing, amazing, amazing'
-    wordcloud = WordCloud().generate(text)
-    fig, ax = plt.subplots(figsize=(PLOT_WIDTH/100, PLOT_HEIGHT/100))
-    ax.imshow(wordcloud, interpolation='bilinear')
-    ax.axis("off")
-    st.pyplot(fig)
-
-with col4:
-    st.header("Frequency of words")
-    words = np.random.choice(['word1', 'word2', 'word3', 'word4', 'word5'], size=100, replace=True)
-    word_counts = Counter(words)
-    word_freq_df = pd.DataFrame.from_dict(word_counts, orient='index', columns=['count']).reset_index()
-    word_freq_df = word_freq_df.rename(columns={'index': 'word'})
-    fig = px.bar(word_freq_df, x='word', y='count', title='Frequency of Words', height=PLOT_HEIGHT, width=PLOT_WIDTH)
-    st.plotly_chart(fig)
-
 # st.header("Frequency of words comparisson")
-
-st.markdown(
-    "More info at [github.com/arctom/PiSAScan](https://github.com/arctom/PiSAScan)"
-)
 
 def configure_sidebar():
     """
@@ -336,10 +121,57 @@ def configure_sidebar():
         st.divider()
 
 def colored_text(X):
-    print(X)
+    st.header("Annotated CV")
+    text = []
+    print(X.columns)
+    for index, row in X.iterrows():
+        mapping = (row['sentence'], str(row['cluster']))
+        text.append(mapping)
+    with st.container(border=True):
+        annotated_text(text)
 
 def predict_proba(X, results):
-    pass
+    resultados = results[0]
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.header("Classification")
+        chart_data = pd.DataFrame({"Role": ["Gerente", "Especialista", "Director"],"Probability": resultados})
+        fig = px.pie(chart_data, values='Probability', names='Role', height=PLOT_HEIGHT, width=PLOT_WIDTH)
+        st.plotly_chart(fig)
+
+    with col2:
+        st.header("Top Semantic Meaning")
+        cluster_counts = X['cluster'].value_counts().reset_index()
+        cluster_counts.columns = ['Cluster', 'Count']
+        cluster_counts = cluster_counts.sort_values(by='Count', ascending=False).iloc[0:5, :]
+        bar_chart = px.bar(cluster_counts, x='Cluster', y='Count', height=PLOT_HEIGHT, width=PLOT_WIDTH)
+        st.plotly_chart(bar_chart)
+
+    all_words = " ".join(X['sentence'].to_list())
+    col3, col4 = st.columns(2)
+    print(all_words)
+    with col3:
+        st.header("Cloud of words")
+        text = all_words
+        wordcloud = WordCloud().generate(text)
+        fig, ax = plt.subplots(figsize=(PLOT_WIDTH/100, PLOT_HEIGHT/100))
+        ax.imshow(wordcloud, interpolation='bilinear')
+        ax.axis("off")
+        st.pyplot(fig)
+
+    with col4:
+        st.header("Frequency of words")
+        words = all_words.split(" ")
+        word_counts = Counter(words)
+        word_freq_df = pd.DataFrame.from_dict(word_counts, orient='index', columns=['count']).reset_index()
+        print(word_freq_df)
+        word_freq_df = word_freq_df.sort_values(by='count', ascending=False).iloc[0:5, :]
+        word_freq_df = word_freq_df.rename(columns={'index': 'word'})
+        fig = px.bar(word_freq_df, x='word', y='count', height=PLOT_HEIGHT, width=PLOT_WIDTH)
+        st.plotly_chart(fig)
+
 
 def main():
     """
@@ -349,6 +181,10 @@ def main():
     results, X = configure_sidebar()
     colored_text(X)
     predict_proba(X, results)
+    # cloud_of_words(X)
+    st.markdown(
+    "More info at [github.com/arctom/PiSAScan](https://github.com/arctom/PiSAScan)"
+    )
 
 if __name__ == "__main__":
     main()
