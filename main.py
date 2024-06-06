@@ -286,7 +286,7 @@ st.markdown(
     "More info at [github.com/arctom/PiSAScan](https://github.com/arctom/PiSAScan)"
 )
 
-def configure_sidebar() -> None:
+def configure_sidebar():
     """
     Setup and display the sidebar
     """
@@ -331,16 +331,24 @@ def configure_sidebar() -> None:
             # main_code(bytes_data)
             with open('test.pdf', 'wb') as f:
                 f.write(uploaded_file.read())
-            results = main_code('D:/Github/PiSAScan/test.pdf')
+            return main_code('D:/Github/PiSAScan/test.pdf') 
 
         st.divider()
+
+def colored_text(X):
+    print(X)
+
+def predict_proba(X, results):
+    pass
 
 def main():
     """
     Main function to run the Streamlit application
     This function initializes the sidebar and the main page layout.
     """
-    configure_sidebar()
+    results, X = configure_sidebar()
+    colored_text(X)
+    predict_proba(X, results)
 
 if __name__ == "__main__":
     main()

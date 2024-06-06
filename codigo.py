@@ -50,9 +50,9 @@ def main_code(file_path):
         #     return
         
         print('Before enter to test_model')
-        results = test_model(df_embeddings, df_cvs, [0], lda_model, keras_model, clf_clusters, pca, None, kmeans.n_clusters, clusters_coeff, words_coeff)
+        results, X = test_model(df_embeddings, df_cvs, [0], lda_model, keras_model, clf_clusters, pca, None, kmeans.n_clusters, clusters_coeff, words_coeff)
         print('After enter to test model')
-        return 5
+        return results, X
 
     except Exception as e:
         print(f"Error in main execution block: {e}")
@@ -334,4 +334,4 @@ def test_model(df_embeddings, df_cvs, test_index, lda_model, keras_model, clf_cl
 
     results = keras_model.predict(X_points)
     print("Resultados:",results)
-    return results
+    return results, X_test
