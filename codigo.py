@@ -19,7 +19,6 @@ from spire.doc import *
 from spire.doc.common import *
 from unidecode import unidecode
 from sklearn.feature_extraction.text import CountVectorizer
-from main import show_results
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract'
 
@@ -35,6 +34,7 @@ stop_words = set(nltk.corpus.stopwords.words('english'))
 def main_code(file_path):
     """Main function to process a single file and send the results to show_results."""
     try:
+        print('main_code')
         root, config = load_config()
         poppler_path = 'D:/users/poppler-24.02.0/Library/bin'
         output_path = 'D:/Github/PiSAScan/data/output.xlsx'
@@ -43,15 +43,16 @@ def main_code(file_path):
         df_embeddings, df_cvs = save_to_df(embeddings, [processed_data], output_path)
         
         models_path = 'D:/Github/PiSAScan/models'
-        clf_clusters, keras, kmeans, lda_model, pca, clusters_coeff, words_coeff = load_models_and_data(models_path)
+        clf_clusters, keras_model, kmeans, lda_model, pca, clusters_coeff, words_coeff = load_models_and_data(models_path)
         
-        if not all([clf_clusters, keras, kmeans, lda_model, pca, clusters_coeff, words_coeff]):
-            print("Error: One or more models or data files could not be loaded.")
-            return
+        # if not all([clf_clusters, keras_model, kmeans, lda_model, pca, clusters_coeff, words_coeff]):
+        #     print("Error: One or more models or data files could not be loaded.")
+        #     return
         
-        results = test_model(df_embeddings, df_cvs, [0], lda_model, keras, clf_clusters, pca, None, kmeans.n_clusters, clusters_coeff, words_coeff)
-        
-        show_results(results)
+        print('Before enter to test_model')
+        results = test_model(df_embeddings, df_cvs, [0], lda_model, keras_model, clf_clusters, pca, None, kmeans.n_clusters, clusters_coeff, words_coeff)
+        print('After enter to test model')
+        return 5
 
     except Exception as e:
         print(f"Error in main execution block: {e}")
@@ -281,11 +282,12 @@ def get_test_matrix(df, df_norm, num_clusters, clusters_coeff, words_coeff):
 def load_models_and_data(models_path):
     """Function to load the required models and data files from the specified path."""
     try:
+        print('load_models')
         with open(f'{models_path}/clf_clusters.pkl', 'rb') as file:
             clf_clusters = pickle.load(file)
         # with open(f'{models_path}/clf_model.pkl', 'rb') as file:
         #     clf_model = pickle.load(file)
-        keras = keras.models.load_model(f'{models_path}/classification_model.keras')
+        keras_model = keras.saving.load_model(f'{models_path}/classification_model.keras')
         with open(f'{models_path}/kmeans.pkl', 'rb') as file:
             kmeans = pickle.load(file)
         with open(f'{models_path}/lda.pkl', 'rb') as file:
@@ -293,10 +295,15 @@ def load_models_and_data(models_path):
         with open(f'{models_path}/pca.pkl', 'rb') as file:
             pca = pickle.load(file)
 
+        print('load_models::Getting coeff')
         clusters_coeff = pd.read_csv(f'{models_path}/clusters_coeff.csv')
+        print('load_models::clusters coeff')
+        print(clusters_coeff)
         words_coeff = pd.read_csv(f'{models_path}/words_coeff.csv')
-
-        return clf_clusters, keras, kmeans, lda_model, pca, clusters_coeff, words_coeff
+        print('load_models::words coeff')
+        print(words_coeff)
+        
+        return clf_clusters, keras_model, kmeans, lda_model, pca, clusters_coeff, words_coeff
 
     except Exception as e:
         print(f"Error loading models or data: {e}")
@@ -306,13 +313,9 @@ def test_model(df_embeddings, df_cvs, test_index, lda_model, keras_model, clf_cl
     """
     This function evaluates a model
     """
-    X_test = df_embeddings[df_embeddings['index'].isin(test_index)].copy()
-    y_test = df_cvs[df_cvs['index'].isin(test_index)].copy()['label']
-    df_cvs_copy = df_cvs[df_cvs['index'].isin(test_index)].copy()
-
-    print('Step 2:: Generating Synthetic Data')
-    rows_gerente = df_cvs_copy[df_cvs_copy['label'] == 'Gerente'].shape[0]
-    print(f'Rows Gerente:: {rows_gerente}')
+    print('test_model')
+    X_test = df_embeddings.copy()
+    y_test = df_cvs.copy()['label']
 
     cluster_prediction = clf_clusters.predict(X_test['embedding'].to_list())
     X_test['cluster'] = cluster_prediction

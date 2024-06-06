@@ -18,9 +18,6 @@ st.set_page_config(
     page_icon='./images/favicon.ico'
     )
 
-def show_results(results):
-    print('Results:', results)
-
 def set_page_container_style(
         max_width: int = 1100, max_width_100_percent: bool = False,
         padding_top: int = 1, padding_right: int = 10, padding_left: int = 1, padding_bottom: int = 10,
@@ -334,7 +331,7 @@ def configure_sidebar() -> None:
             # main_code(bytes_data)
             with open('test.pdf', 'wb') as f:
                 f.write(uploaded_file.read())
-            main_code('D:/Github/PiSAScan/test.pdf')
+            results = main_code('D:/Github/PiSAScan/test.pdf')
 
         st.divider()
 
