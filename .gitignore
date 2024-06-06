@@ -11,6 +11,7 @@
 # production
 /build
 /env
+/__pycache__
 
 # misc
 .DS_Store
