@@ -18,7 +18,7 @@ from spire.doc.common import *
 from unidecode import unidecode
 from tempfile import NamedTemporaryFile 
 
-pytesseract.pytesseract.tesseract_cmd = '/usr/local/opt/tesseract/bin/tesseract'
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract'
 
 nltk.download('wordnet')
 nltk.download('omw-1.4')
@@ -29,27 +29,19 @@ model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 words = set(nltk.corpus.words.words())
 stop_words = set(nltk.corpus.stopwords.words('english'))
 
-def main_code(file_data):
+def main_code(file_path):
     """Main function to process a single file and send the results to show_results."""
     try:
         root, config = load_config()
-        poppler_path = '/usr/local/opt/poppler/bin'
-        output_path = os.path.join(root, config['data']['output_path'])
+        poppler_path = 'D:/users/poppler-24.02.0/Library/bin'
+        output_path = 'D:/Github/PiSAScan/data/output.xlsx'
         
-        # Save the uploaded file to a temporary location
-        with NamedTemporaryFile(delete=False) as temp_file:
-            temp_file.write(file_data.read())
-            temp_file_path = temp_file.name
-        
-        print(f"Processing file: {temp_file_path}")
-        embeddings, processed_data = process_file(temp_file_path, poppler_path=poppler_path)
+        embeddings, processed_data = process_file(file_path, poppler_path=poppler_path)
         save_to_excel(embeddings, [processed_data], output_path)
         
         from main import show_results
         show_results(output_path)
-        
-        # Remove the temporary file after processing
-        os.unlink(temp_file_path)
+
     except Exception as e:
         print(f"Error in main execution block: {e}")
 
@@ -91,7 +83,7 @@ def load_config():
         print(f"Error loading configuration: {e}")
         return project_root, {}
 
-def preprocess_by_fixed_words(text, label, index, num_words=10):
+def preprocess_by_fixed_words(text, label, index, num_words=7):
     """
     Preprocess text by translating, normalizing, lemmatizing, and extracting embeddings. 
 
@@ -195,7 +187,7 @@ def translate_text(text):
         print(f"Error translating text: {e}")
         return text
 
-def process_file(file_path, label='cv', num_words=10, poppler_path='/usr/local/opt/poppler/bin'):
+def process_file(file_path, label='cv', num_words=7, poppler_path='/usr/local/opt/poppler/bin'):
     """Process a single PDF, DOC, or DOCX file to extract embeddings and text."""
     ext = os.path.splitext(file_path)[1].lower()
     if ext == '.pdf':

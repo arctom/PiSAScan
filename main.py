@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import plotly.express as px
 from collections import Counter
 from codigo import main_code
+# import pyPDF2
 
 BACKGROUND_COLOR = 'white'
 COLOR = 'black'
@@ -327,10 +328,13 @@ def configure_sidebar() -> None:
         """, unsafe_allow_html=True)
 
         if uploaded_file is not None:
-            bytes_data = uploaded_file.read()
-            st.write("filename:", uploaded_file.name)
-            st.write(bytes_data)
-            main_code(uploaded_file)
+            # bytes_data = uploaded_file.read()
+            # st.write("filename:", uploaded_file.name)
+            # st.write(bytes_data)
+            # main_code(bytes_data)
+            with open('test.pdf', 'wb') as f:
+                f.write(uploaded_file.read())
+            main_code('D:/Github/PiSAScan/test.pdf')
 
         st.divider()
 
