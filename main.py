@@ -18,8 +18,8 @@ st.set_page_config(
     page_icon='./images/favicon.ico'
     )
 
-def show_results():
-    pass
+def show_results(results):
+    print('Results:', results)
 
 def set_page_container_style(
         max_width: int = 1100, max_width_100_percent: bool = False,

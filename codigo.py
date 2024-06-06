@@ -7,6 +7,8 @@ import pandas as pd
 import pytesseract
 import re
 import yaml
+import pickle
+import keras
 from deep_translator import GoogleTranslator
 from langdetect import detect
 from nltk.stem import WordNetLemmatizer
@@ -17,8 +19,7 @@ from spire.doc import *
 from spire.doc.common import *
 from unidecode import unidecode
 from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.metrics import balanced_accuracy_score
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from main import show_results
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract'
 
@@ -41,10 +42,16 @@ def main_code(file_path):
         embeddings, processed_data = process_file(file_path, poppler_path=poppler_path)
         df_embeddings, df_cvs = save_to_df(embeddings, [processed_data], output_path)
         
-        test_model(df_embeddings, df_cvs, [0], None, None, None, None, None, None, None, None, None)
+        models_path = 'D:/Github/PiSAScan/models'
+        clf_clusters, keras, kmeans, lda_model, pca, clusters_coeff, words_coeff = load_models_and_data(models_path)
         
-        from main import show_results
-        show_results(output_path)
+        if not all([clf_clusters, keras, kmeans, lda_model, pca, clusters_coeff, words_coeff]):
+            print("Error: One or more models or data files could not be loaded.")
+            return
+        
+        results = test_model(df_embeddings, df_cvs, [0], lda_model, keras, clf_clusters, pca, None, kmeans.n_clusters, clusters_coeff, words_coeff)
+        
+        show_results(results)
 
     except Exception as e:
         print(f"Error in main execution block: {e}")
@@ -271,7 +278,31 @@ def get_test_matrix(df, df_norm, num_clusters, clusters_coeff, words_coeff):
 
     return df_result
 
-def test_model(df_embeddings, df_cvs, test_index, lda_model, clf_model, clf_clusters, pca, mask, n_clusters, clusters_coeff, words_coeff):
+def load_models_and_data(models_path):
+    """Function to load the required models and data files from the specified path."""
+    try:
+        with open(f'{models_path}/clf_clusters.pkl', 'rb') as file:
+            clf_clusters = pickle.load(file)
+        # with open(f'{models_path}/clf_model.pkl', 'rb') as file:
+        #     clf_model = pickle.load(file)
+        keras = keras.models.load_model(f'{models_path}/classification_model.keras')
+        with open(f'{models_path}/kmeans.pkl', 'rb') as file:
+            kmeans = pickle.load(file)
+        with open(f'{models_path}/lda.pkl', 'rb') as file:
+            lda_model = pickle.load(file)
+        with open(f'{models_path}/pca.pkl', 'rb') as file:
+            pca = pickle.load(file)
+
+        clusters_coeff = pd.read_csv(f'{models_path}/clusters_coeff.csv')
+        words_coeff = pd.read_csv(f'{models_path}/words_coeff.csv')
+
+        return clf_clusters, keras, kmeans, lda_model, pca, clusters_coeff, words_coeff
+
+    except Exception as e:
+        print(f"Error loading models or data: {e}")
+        return None, None, None, None, None, None, None
+
+def test_model(df_embeddings, df_cvs, test_index, lda_model, keras_model, clf_clusters, pca, mask, n_clusters, clusters_coeff, words_coeff):
     """
     This function evaluates a model
     """
@@ -298,13 +329,6 @@ def test_model(df_embeddings, df_cvs, test_index, lda_model, clf_model, clf_clus
     # X_points = lda_model.transform(np.array(X_pro))
     X_points = lda_model.transform(np.array(X))
 
-    print('Step::10 Predict Proba')
-    print(y_test)
-    print(clf_model.predict_proba(X_points))
-    score = balanced_accuracy_score(y_test, clf_model.predict(X_points))
-    cm = confusion_matrix(y_test, clf_model.predict(X_points), labels=clf_model.classes_)
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm,
-                              display_labels=clf_model.classes_)
-    disp.plot()
-    # plt.show()
-    return None
+    results = keras_model.predict(X_points)
+    print("Resultados:",results)
+    return results
