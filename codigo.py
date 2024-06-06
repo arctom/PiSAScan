@@ -16,6 +16,7 @@ from sentence_transformers import SentenceTransformer
 from spire.doc import *
 from spire.doc.common import *
 from unidecode import unidecode
+from tempfile import NamedTemporaryFile 
 
 pytesseract.pytesseract.tesseract_cmd = '/usr/local/opt/tesseract/bin/tesseract'
 
@@ -34,12 +35,21 @@ def main_code(file_data):
         root, config = load_config()
         poppler_path = '/usr/local/opt/poppler/bin'
         output_path = os.path.join(root, config['data']['output_path'])
-
-        embeddings, processed_data = process_file(file_data, poppler_path=poppler_path)
+        
+        # Save the uploaded file to a temporary location
+        with NamedTemporaryFile(delete=False) as temp_file:
+            temp_file.write(file_data.read())
+            temp_file_path = temp_file.name
+        
+        print(f"Processing file: {temp_file_path}")
+        embeddings, processed_data = process_file(temp_file_path, poppler_path=poppler_path)
         save_to_excel(embeddings, [processed_data], output_path)
         
         from main import show_results
         show_results(output_path)
+        
+        # Remove the temporary file after processing
+        os.unlink(temp_file_path)
     except Exception as e:
         print(f"Error in main execution block: {e}")
 
