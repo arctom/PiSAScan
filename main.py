@@ -1,12 +1,12 @@
-import streamlit as st # type: ignore
+import streamlit as st
 import pandas as pd
 import numpy as np
-from annotated_text import annotated_text # type: ignore
+from annotated_text import annotated_text
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
-import plotly.express as px # type: ignore
+import plotly.express as px
 from collections import Counter
-from codigo import process_file
+from codigo import main_code
 
 BACKGROUND_COLOR = 'white'
 COLOR = 'black'
@@ -16,6 +16,9 @@ st.set_page_config(
     layout='wide',
     page_icon='./images/favicon.ico'
     )
+
+def show_results():
+    pass
 
 def set_page_container_style(
         max_width: int = 1100, max_width_100_percent: bool = False,
@@ -327,7 +330,7 @@ def configure_sidebar() -> None:
             bytes_data = uploaded_file.read()
             st.write("filename:", uploaded_file.name)
             st.write(bytes_data)
-            process_file(bytes_data)
+            main_code(uploaded_file)
 
         st.divider()
 

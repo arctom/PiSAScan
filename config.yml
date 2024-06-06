@@ -1,0 +1,4 @@
+data:
+  input_path: data/input
+  output_path: data/output/output.xlsx
+txt: txt_data
