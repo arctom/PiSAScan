@@ -20,7 +20,7 @@ from spire.doc.common import *
 from unidecode import unidecode
 from sklearn.feature_extraction.text import CountVectorizer
 
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract'
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 nltk.download('wordnet')
 nltk.download('omw-1.4')
@@ -36,13 +36,13 @@ def main_code(file_path):
     try:
         print('main_code')
         root, config = load_config()
-        poppler_path = 'D:/users/poppler-24.02.0/Library/bin'
-        output_path = 'D:/Github/PiSAScan/data/output.xlsx'
+        poppler_path = 'C:/Users/arcto/poppler-24.08.0/Library/bin'
+        output_path = 'C:/Users/arcto/Desktop/CV-Classifier/demo_website/data/output.xlsx'
         
         embeddings, processed_data = process_file(file_path, poppler_path=poppler_path)
         df_embeddings, df_cvs = save_to_df(embeddings, [processed_data], output_path)
         
-        models_path = 'D:/Github/PiSAScan/models'
+        models_path = 'C:/Users/arcto/Desktop/CV-Classifier/models'
         clf_clusters, keras_model, kmeans, lda_model, pca, clusters_coeff, words_coeff = load_models_and_data(models_path)
         
         # if not all([clf_clusters, keras_model, kmeans, lda_model, pca, clusters_coeff, words_coeff]):
@@ -139,13 +139,17 @@ def process_doc(file_path):
 def process_pdf(file_path, poppler_path):
     """Process PDF files to extract text."""
     try:
+        print("Enter loop")
         pages = convert_from_path(file_path, dpi=200, poppler_path=poppler_path)
         text = ""
         for page in pages:
+            print("post poppler")
             img = np.array(page.convert('RGB')).astype(np.uint8)
             img_grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             _, thr = cv2.threshold(img_grey, 127, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            print("Before tesseract")
             page_text = pytesseract.image_to_string(thr, lang='spa+eng')
+            print("After tesseract")
             text += page_text
         return text
     except Exception as e:

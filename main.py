@@ -1,190 +1,271 @@
-import streamlit as st
-import pandas as pd
+import cv2
+import math
+import multiprocessing
+import nltk
 import numpy as np
-from annotated_text import annotated_text
-from wordcloud import WordCloud
-import matplotlib.pyplot as plt
-import plotly.express as px
-from collections import Counter
-from codigo import main_code
-# import pyPDF2
+import os
+import pandas as pd 
+import pytesseract
+import re
+import yaml
+from deep_translator import GoogleTranslator 
+from langdetect import detect
+from nltk.stem import WordNetLemmatizer  
+from pathlib import Path
+from pdf2image import convert_from_path
+from sentence_transformers import SentenceTransformer
+from spire.doc import *
+from spire.doc.common import *
+from unidecode import unidecode
 
-BACKGROUND_COLOR = 'white'
-COLOR = 'black'
+# Setting the path to the Tesseract command
+pytesseract.pytesseract.tesseract_cmd = '/usr/local/opt/tesseract/bin/tesseract'
 
-st.set_page_config(
-    page_title='CV Classifier',
-    layout='wide',
-    page_icon='./images/favicon.ico'
-    )
+# Initialize constants
+nltk.download('wordnet')
+nltk.download('omw-1.4')
+nltk.download('words')
+nltk.download('stopwords')
+wnl = WordNetLemmatizer()
+model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
+words = set(nltk.corpus.words.words())
+stop_words = set(nltk.corpus.stopwords.words('english'))
 
-def set_page_container_style(
-        max_width: int = 1100, max_width_100_percent: bool = False,
-        padding_top: int = 1, padding_right: int = 10, padding_left: int = 1, padding_bottom: int = 10,
-        color: str = COLOR, background_color: str = BACKGROUND_COLOR,
-    ):
-        if max_width_100_percent:
-            max_width_str = f'max-width: 100%;'
+# Functions
+
+def concat_chunks(translated_list):
+    """Concatenate list of translated chunks into a single string."""
+    return "".join(translated_list)
+
+def convert2txt(input_path, txt_path, poppler_path):
+    """
+    Convert PDF and DOC/DOCX files in specified directories to text format.
+
+    Args:
+    input_path (str): Directory containing folders of PDFs and DOCs.
+    txt_path (str): Output directory for saving text files.
+    poppler_path (str): Path to the Poppler library binaries.
+    """
+    dir_list = [f for f in os.listdir(input_path) if f[0] != '.']
+    file_info_list = [(folder, cv, input_path, txt_path, poppler_path) for folder in dir_list for cv in os.listdir(os.path.join(input_path, folder)) if cv[0] != '.']
+
+    with multiprocessing.Pool() as pool:
+        pool.map(worker_convert, file_info_list)
+
+def detect_language(text):
+    """
+    Detect the language of the given text.
+
+    Args:
+    text (str): Text to detect the language of.
+
+    Returns:
+    str: Detected language code or "Unknown" if detection fails.
+    """
+    try:
+        return detect(text)
+    except Exception as e:
+        print(f"Error detecting language: {e}")
+        return "Unknown"
+
+def get_project_root():
+    """Return the root directory of the project as a Path object."""
+    return Path(__file__).parent 
+
+def load_config():
+    """Load configuration from a YAML file located in the project root directory."""
+    project_root = get_project_root()
+    config_path = project_root / "config.yml"
+    try:
+        with open(config_path, 'r') as f:
+            params = yaml.load(f, Loader = yaml.FullLoader)
+        return project_root, params
+    except Exception as e:
+        print(f"Error loading configuration: {e}")
+        return project_root, {}
+    
+def load_file(file_info):
+    """Process a single file to extract embeddings and text."""
+    file, dir, label, index, num_words = file_info
+    try:
+        path = os.path.join(dir, file)
+        print(f'Processing file: {path}')
+        with open (path, 'r', encoding='utf-8', errors='ignore') as tmp:
+            embeddings, text = preprocess_by_fixed_words(tmp.read(), label, index, num_words)
+            return embeddings,{'label': label, 'index': index, 'text': text}, index + 1 
+    except Exception as e:
+        print(f"Error processing file {path}: {e}")
+        return [], "", index
+
+def load_data(root_dir, index = 0, label = '', num_words=10):
+    """
+    Load and process data from text files, returning embeddings and processed data frames.
+
+    Args:
+    dir (str): Directory to load data from.
+    index (str): Index to start from for labelling.
+    label (str): Label to assign to the data.
+    num_words (int): Number of words to consider for each chunk.
+
+    Returns:
+    Tuple: A tuple containing embeddings, data frames, and the last index used.
+    """
+    df_embeddings, df_cvs = [], []
+
+    file_info_list = []
+    for dirpath, dirnames, filenames in os.walk(root_dir):
+        for dirname in dirnames:
+            label = dirname
+            for filename in os.listdir(os.path.join(dirpath, dirname)):
+                if not filename.startswith('.'):
+                    file_info_list.append((filename, os.path.join(dirpath, dirname), label, index + len(file_info_list), num_words))
+            
+    with multiprocessing.Pool() as pool:
+        results = pool.map(load_file, file_info_list)
+
+    for result in results:
+        embeddings, cv, new_index = result
+        if embeddings:
+            df_embeddings.extend(embeddings)
+            df_cvs.append(cv)
+            index = new_index
+    
+    return df_embeddings, df_cvs, index
+
+def preprocess_by_fixed_words(text, label, index, num_words=10):
+    """
+    Preprocess text by translating, normalizing, lemmatizing, and extracting embeddings. 
+
+    Args:
+    text (str): Text to preprocess.
+    label (str): Label for the data. 
+    index (int): Data index.
+    num_words (int): Number of words per chunk for embeddings.
+
+    Returns:
+    Tuple: Embeddings and the processed text.
+    """
+    try:
+        text = translate_text(text)
+        regex = re.compile('[^a-zA-Z]')
+        text = unidecode(text)
+        text = regex.sub(' ', text).lower()
+        filtered_text = " ".join(wnl.lemmatize(word) for word in nltk.wordpunct_tokenize(text) if word in words and word not in stop_words and len(word) > 1)
+        text_chunks = filtered_text.split()
+        embeddings = []
+        for i in range(0, len(text_chunks), num_words):
+            sentence = ' '.join(text_chunks[i:i + num_words])
+            embedding = model.encode(sentence)
+            embeddings.append({'label': label, 'index': index, 'sentence': sentence, 'embedding': embedding, 'len': math.ceil(len(text_chunks) / num_words)})
+        return embeddings, filtered_text
+    except Exception as e:
+        print(f"Error preprocessing text: {e}")
+        return [], " "
+
+def process_doc(file_path, txt_file_path):
+    """Process DOC/DOCX files to extract text."""
+    try:
+        document = Document(file_path)
+        document.SaveToFile(txt_file_path, FileFormat.Txt)
+        document.Close()
+        # Clean up unnecessary top lines from DOC/DOCX text output
+        with open(txt_file_path, 'r') as fin:
+            data = fin.read().splitlines(True)
+        with open(txt_file_path, 'w') as fout:
+            fout.writelines(data[1:])
+    except Exception as e:
+        print(f"Error processing DOC/DOCX file {file_path}: {e}")
+
+def process_pdf(file_path, txt_file_path, poppler_path):
+    """Process PDF files to extract text."""
+    try:
+        pages = convert_from_path(file_path, dpi=200, poppler_path=poppler_path)
+        for page in pages:
+            img = np.array(page.convert('RGB')).astype(np.uint8)
+            img_grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            _, thr = cv2.threshold(img_grey, 127, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            image_text = pytesseract.image_to_string(thr, lang='spa+eng')
+            with open(txt_file_path, 'a') as text_file:
+                text_file.write(image_text)
+    except Exception as e:
+        print(f"Error processing PDF file {file_path}: {e}")
+
+def save_to_excel(embeddings, cvs, filename):
+    """Save embeddings and CVs to an Excel file.""" 
+    try:
+        df_embeddings = pd.DataFrame(embeddings)
+        df_cvs = pd.DataFrame(cvs)
+        with pd.ExcelWriter(filename, engine='openpyxl') as writer:
+            df_embeddings.to_excel(writer, sheet_name='Embeddings', index=False)
+            df_cvs.to_excel(writer, sheet_name='CVs', index=False)
+        print(f"Data successfully saved to {filename}")
+    except Exception as e:
+        print(f"Error saving to Excel file {filename}: {e}")
+
+def split_text(text, chunk_size=4999):
+    """
+    Split text into chunks of specified size, ensuring that each chunk is within a limit.
+
+    Args: 
+    text (str): Text to split.
+    chunk_size (int): Maximum size of each chunk.
+
+    Returns:
+    List[str]: List of text chunks.
+    """
+    return [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
+
+def translate_text(text):
+    """
+    Translate text to English if it not already in English.
+
+    Args:
+    text (str): Text to translate.
+
+    Returns:
+    str: Translated English text. 
+    """
+    try:
+        language = detect_language(text)
+        if language != 'en':
+            chunks = split_text(text)
+            translated = [GoogleTranslator(source='auto', target='en').translate(chunk) for chunk in chunks]
+            return concat_chunks(translated)
         else:
-            max_width_str = f'max-width: {max_width}px;'
-        st.markdown(
-            f'''
-            <style>
-                .reportview-container .css-1lcbmhc .css-1outpf7 {{
-                    padding-top: 35px;
-                }}
-                .reportview-container .main .block-container {{
-                    {max_width_str}
-                    padding-top: {padding_top}rem;
-                    padding-right: {padding_right}rem;
-                    padding-left: {padding_left}rem;
-                    padding-bottom: {padding_bottom}rem;
-                }}
-                .reportview-container .main {{
-                    color: {color};
-                    background-color: {background_color};
-                }}
-            </style>
-            ''',
-            unsafe_allow_html=True,
-        )
+            return text
+    except Exception as e:
+        print(f"Error translating text: {e}")
+        return text
+    
+def worker_convert(file_info):
+    folder, cv, input_path, txt_path, poppler_path = file_info
+    print(f'Converting {cv}')
+    folder_path = os.path.join(input_path, folder)
+    file_name, ext = os.path.splitext(cv)
+    file_path = os.path.join(folder_path, cv)
+    txt_file_path = os.path.join(txt_path, folder, file_name + '.txt')
+    if ext.lower() in ['.pdf']:
+        process_pdf(file_path, txt_file_path, poppler_path)
+    elif ext.lower() in ['.docx', '.doc']:
+        process_doc(file_path, txt_file_path)
+    else:
+        print(f'Format {ext} is not supported.')
 
-# Main Page
-st.markdown("""
-# CV Classifier
-""")
-
-st.markdown(
-            f'''
-            <style>
-                .reportview-container .sidebar-content {{
-                    padding-top: {1}rem;
-                }}
-                .reportview-container .main .block-container {{
-                    padding-top: {1}rem;
-                }}
-            </style>
-            ''',unsafe_allow_html=True)
-
-PLOT_HEIGHT = 400
-PLOT_WIDTH = 400
-
-# st.header("Frequency of words comparisson")
-
-def configure_sidebar():
-    """
-    Setup and display the sidebar
-    """
-    with st.sidebar:
-
-        st.title("CV Classifier")
-        st.subheader("A project for Curriculum Vitae classification.")
-        st.markdown("""
-        This project aims to develop an automated system that classifies resumes (CVs) into different categories such as Director, Manager, and Specialist based on their characteristics and content. This system has been specifically designed to meet the needs of Pisa, helping to optimize the personnel selection process and ensuring that candidates are evaluated efficiently and accurately.
-        """)
-
-        st.markdown("""
-            <style>
-                .custom-file-uploader {
-                    border: 2px dashed #aaa;
-                    padding: 10px;
-                    border-radius: 5px;
-                    text-align: center;
-                }
-                .custom-file-uploader:hover {
-                    background-color: #f0f0f0;
-                }
-            </style>
-            <div class="custom-file-uploader">
-                <h4>Upload your CV</h4>
-                <p>↓ Select a file to upload ↓</p>
-            </div>
-        """, unsafe_allow_html=True)
-
-        uploaded_file = st.file_uploader("", key="fileUploader")
-
-        st.markdown("""
-            <div class="custom-file-uploader">
-                <p>Accepted formats: PDF, DOCX, DOC</p>
-            </div>
-        """, unsafe_allow_html=True)
-
-        if uploaded_file is not None:
-            # bytes_data = uploaded_file.read()
-            # st.write("filename:", uploaded_file.name)
-            # st.write(bytes_data)
-            # main_code(bytes_data)
-            with open('test.pdf', 'wb') as f:
-                f.write(uploaded_file.read())
-            return main_code('D:/Github/PiSAScan/test.pdf') 
-
-        st.divider()
-
-def colored_text(X):
-    st.header("Annotated CV")
-    text = []
-    print(X.columns)
-    for index, row in X.iterrows():
-        mapping = (row['sentence'], str(row['cluster']))
-        text.append(mapping)
-    with st.container(border=True):
-        annotated_text(text)
-
-def predict_proba(X, results):
-    resultados = results[0]
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.header("Classification")
-        chart_data = pd.DataFrame({"Role": ["Gerente", "Especialista", "Director"],"Probability": resultados})
-        fig = px.pie(chart_data, values='Probability', names='Role', height=PLOT_HEIGHT, width=PLOT_WIDTH)
-        st.plotly_chart(fig)
-
-    with col2:
-        st.header("Top Semantic Meaning")
-        cluster_counts = X['cluster'].value_counts().reset_index()
-        cluster_counts.columns = ['Cluster', 'Count']
-        cluster_counts = cluster_counts.sort_values(by='Count', ascending=False).iloc[0:5, :]
-        bar_chart = px.bar(cluster_counts, x='Cluster', y='Count', height=PLOT_HEIGHT, width=PLOT_WIDTH)
-        st.plotly_chart(bar_chart)
-
-    all_words = " ".join(X['sentence'].to_list())
-    col3, col4 = st.columns(2)
-    print(all_words)
-    with col3:
-        st.header("Cloud of words")
-        text = all_words
-        wordcloud = WordCloud().generate(text)
-        fig, ax = plt.subplots(figsize=(PLOT_WIDTH/100, PLOT_HEIGHT/100))
-        ax.imshow(wordcloud, interpolation='bilinear')
-        ax.axis("off")
-        st.pyplot(fig)
-
-    with col4:
-        st.header("Frequency of words")
-        words = all_words.split(" ")
-        word_counts = Counter(words)
-        word_freq_df = pd.DataFrame.from_dict(word_counts, orient='index', columns=['count']).reset_index()
-        print(word_freq_df)
-        word_freq_df = word_freq_df.sort_values(by='count', ascending=False).iloc[0:5, :]
-        word_freq_df = word_freq_df.rename(columns={'index': 'word'})
-        fig = px.bar(word_freq_df, x='word', y='count', height=PLOT_HEIGHT, width=PLOT_WIDTH)
-        st.plotly_chart(fig)
-
-
-def main():
-    """
-    Main function to run the Streamlit application
-    This function initializes the sidebar and the main page layout.
-    """
-    results, X = configure_sidebar()
-    colored_text(X)
-    predict_proba(X, results)
-    # cloud_of_words(X)
-    st.markdown(
-    "More info at [github.com/arctom/PiSAScan](https://github.com/arctom/PiSAScan)"
-    )
 
 if __name__ == "__main__":
-    main()
+    # Main execution block to run the script functionalities
+    try:
+        root, config = load_config()
+        poppler_path = '/usr/local/opt/poppler/bin'
+        input_path = os.path.join(root, config['data']['input_path'])
+        txt_path = os.path.join(root, config['txt'])
+        output_path = os.path.join(root, config['data']['output_path'])
+
+        if not input_path or not txt_path or not output_path:
+            raise ValueError("Input path, text path, or output path is missing in the configuration file.")
+        
+        convert2txt(input_path, txt_path, poppler_path)
+        df_embeddings, df_cvs, _ = load_data(txt_path , num_words=7)
+        save_to_excel(df_embeddings, df_cvs, output_path)
+    except Exception as e:
+        print(f"Error in main execution block: {e}")
